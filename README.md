@@ -122,7 +122,7 @@ void sendReading() {
 - ☀️ Solar panel energy monitoring metrics
 
 # 👨‍💻 Authors
-- A. Raghavendra
-- K. Srikanth
-- P. Mahathi
-- U. Hemanth
+- A. Raghavendra - [vu.241fa04022@gmail.com]
+- K. Srikanth - [vu.241fa04096@gmail.com]
+- P. Mahathi - [vu.241fa04651@gmail.com]
+- U. Hemanth - [vu.241fa04778@gmail.com]
