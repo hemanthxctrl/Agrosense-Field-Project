@@ -120,3 +120,9 @@ void sendReading() {
 - 🤖 ML-based irrigation prediction scheduling
 - 🌦️ Public Weather API integration (skip irrigation forecasts)
 - ☀️ Solar panel energy monitoring metrics
+
+# 👨‍💻 Authors
+- A. Raghavendra
+- K. Srikanth
+- P. Mahathi
+- U. Hemanth
