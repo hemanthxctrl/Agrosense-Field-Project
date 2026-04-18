@@ -1,0 +1,3440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgroSense — Smart Farming through Sensor Networks</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap"
+        rel="stylesheet" />
+    <style>
+        /* ══════════════════════════════════════════
+       SHARED VARIABLES & RESET
+    ══════════════════════════════════════════ */
+        :root {
+            --bg: #060d06;
+            --bg1: #0b160b;
+            --bg2: #0f1f0f;
+            --card: #141f14;
+            --card2: #182518;
+            --border: #1e3020;
+            --green: #5bce7a;
+            --green2: #22c55e;
+            --lime: #b5e550;
+            --amber: #fbbf24;
+            --red: #f87171;
+            --blue: #60a5fa;
+            --cream: #f0ead8;
+            --text: #e8f5e8;
+            --muted: #5a7a5a;
+            --font-h: 'Playfair Display', Georgia, serif;
+            --font: 'Syne', sans-serif;
+            --font-b: 'DM Sans', sans-serif;
+            --mono: 'DM Mono', monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--cream);
+            font-family: var(--font-b);
+            overflow-x: hidden;
+        }
+
+        /* ══════════════════════════════════════════
+       PAGE ROUTING — show/hide views
+    ══════════════════════════════════════════ */
+        
+        /* Login shows first by default */
+        #page-login { display: flex; }
+        #page-landing { display: none; }
+        #page-dashboard { display: none; }
+
+        /* After successful login */
+        body.logged-in #page-login    { display: none; }
+        body.logged-in #page-landing  { display: block; }
+
+        /* Dashboard view */
+        body.dashboard-view #page-login    { display: none; }
+        body.dashboard-view #page-landing  { display: none; }
+        body.dashboard-view #page-dashboard { display: flex; }
+
+        /* ══════════════════════════════════════════
+       NOISE OVERLAY
+    ══════════════════════════════════════════ */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            background-size: 200px 200px;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.4;
+        }
+
+        /* ══════════════════════════════════════════
+       CUSTOM CURSOR
+    ══════════════════════════════════════════ */
+        body:not(.dashboard-view) {
+            cursor: none;
+        }
+
+        .cursor {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: var(--green);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s, background 0.3s;
+            mix-blend-mode: screen;
+        }
+
+        .cursor-ring {
+            position: fixed;
+            width: 36px;
+            height: 36px;
+            border: 1px solid rgba(91, 206, 122, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+
+        body.dashboard-view .cursor,
+        body.dashboard-view .cursor-ring {
+            display: none;
+        }
+
+        /* ══════════════════════════════════════════
+       PROGRESS BAR
+    ══════════════════════════════════════════ */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--green), var(--lime));
+            z-index: 9999;
+            transition: width 0.1s linear;
+            pointer-events: none;
+        }
+
+        body.dashboard-view .progress-bar {
+            display: none;
+        }
+
+        /* ══════════════════════════════════════════
+       LANDING NAV
+    ══════════════════════════════════════════ */
+        #landing-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 500;
+            padding: 20px 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.4s, padding 0.4s;
+        }
+
+        #landing-nav.scrolled {
+            background: rgba(6, 13, 6, 0.92);
+            backdrop-filter: blur(16px);
+            padding: 14px 60px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .nav-logo-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--green), var(--lime));
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+
+        .nav-logo-text {
+            font-family: var(--font-h);
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--green), var(--lime));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 36px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            letter-spacing: 0.3px;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--cream);
+        }
+
+        .nav-cta {
+            padding: 9px 22px;
+            border-radius: 30px;
+            border: 1px solid rgba(91, 206, 122, 0.3);
+            background: rgba(91, 206, 122, 0.06);
+            color: var(--green);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .nav-cta:hover {
+            background: var(--green);
+            color: #060d06;
+            border-color: var(--green);
+        }
+
+        /* ══════════════════════════════════════════
+       HERO
+    ══════════════════════════════════════════ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 40px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(91, 206, 122, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            animation: drift 12s ease-in-out infinite alternate;
+        }
+
+        .orb1 {
+            width: 500px;
+            height: 500px;
+            top: -100px;
+            left: -100px;
+            background: rgba(91, 206, 122, 0.05);
+            animation-delay: 0s;
+        }
+
+        .orb2 {
+            width: 400px;
+            height: 400px;
+            bottom: -100px;
+            right: -80px;
+            background: rgba(181, 229, 80, 0.04);
+            animation-delay: -5s;
+        }
+
+        @keyframes drift {
+            from {
+                transform: translate(0, 0) scale(1);
+            }
+
+            to {
+                transform: translate(40px, 30px) scale(1.08);
+            }
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(91, 206, 122, 0.25);
+            background: rgba(91, 206, 122, 0.06);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--green);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 32px;
+            animation: fadeUp 0.8s ease both;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(1.3)
+            }
+        }
+
+        .hero-h1 {
+            font-family: var(--font-h);
+            font-size: clamp(48px, 8vw, 100px);
+            font-weight: 900;
+            line-height: 0.95;
+            letter-spacing: -2px;
+            margin-bottom: 28px;
+            animation: fadeUp 0.8s 0.1s ease both;
+        }
+
+        .hero-h1 em {
+            font-style: italic;
+            background: linear-gradient(135deg, var(--green), var(--lime));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-sub {
+            font-size: 18px;
+            font-weight: 300;
+            color: var(--muted);
+            max-width: 540px;
+            line-height: 1.7;
+            margin-bottom: 48px;
+            animation: fadeUp 0.8s 0.2s ease both;
+        }
+
+        .hero-btns {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeUp 0.8s 0.3s ease both;
+        }
+
+        .btn-primary-l {
+            padding: 14px 32px;
+            border-radius: 30px;
+            background: linear-gradient(135deg, var(--green), var(--lime));
+            color: #060d06;
+            font-weight: 700;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary-l:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(91, 206, 122, 0.35);
+        }
+
+        .btn-ghost-l {
+            padding: 14px 32px;
+            border-radius: 30px;
+            background: transparent;
+            color: var(--cream);
+            font-weight: 600;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.25s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-ghost-l:hover {
+            border-color: var(--muted);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .scroll-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            animation: fadeUp 1s 0.6s ease both;
+        }
+
+        .scroll-line {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, var(--green), transparent);
+            animation: grow 2s ease-in-out infinite;
+        }
+
+        @keyframes grow {
+
+            0%,
+            100% {
+                transform: scaleY(1);
+                opacity: 1
+            }
+
+            50% {
+                transform: scaleY(0.4);
+                opacity: 0.4
+            }
+        }
+
+        /* ══════════════════════════════════════════
+       STATS
+    ══════════════════════════════════════════ */
+        .stats {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 40px 60px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            background: var(--bg1);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            border-right: 1px solid var(--border);
+            transition: background 0.3s;
+        }
+
+        .stat-item:last-child {
+            border-right: none;
+        }
+
+        .stat-item:hover {
+            background: rgba(91, 206, 122, 0.03);
+        }
+
+        .stat-num {
+            font-family: var(--font-h);
+            font-size: 48px;
+            font-weight: 900;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--green), var(--lime));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 6px;
+        }
+
+        /* ══════════════════════════════════════════
+       LANDING SECTIONS
+    ══════════════════════════════════════════ */
+        .l-section {
+            padding: 100px 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .l-section-full {
+            padding: 100px 60px;
+        }
+
+        .l-section-full-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: 16px;
+            font-family: var(--mono);
+        }
+
+        .section-h2 {
+            font-family: var(--font-h);
+            font-size: clamp(32px, 5vw, 60px);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -1.5px;
+            margin-bottom: 20px;
+        }
+
+        .section-h2 em {
+            font-style: italic;
+            color: var(--green);
+        }
+
+        .section-p {
+            font-size: 16px;
+            color: var(--muted);
+            line-height: 1.75;
+            max-width: 560px;
+        }
+
+        /* TWO COL */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .two-col.reverse {
+            display: flex;
+            flex-direction: row-reverse;
+            gap: 80px;
+        }
+
+        .visual-box {
+            border-radius: 20px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .visual-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle at top right, rgba(91, 206, 122, 0.07), transparent 70%);
+        }
+
+        .problem-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .problem-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 10px;
+            background: rgba(248, 113, 113, 0.04);
+            border: 1px solid rgba(248, 113, 113, 0.12);
+            font-size: 14px;
+            color: #d4c4c4;
+        }
+
+        .problem-list li::before {
+            content: '✕';
+            color: #f87171;
+            font-weight: 700;
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+
+        .solution-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .solution-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 10px;
+            background: rgba(91, 206, 122, 0.04);
+            border: 1px solid rgba(91, 206, 122, 0.12);
+            font-size: 14px;
+            color: #c4d4c4;
+        }
+
+        .solution-list li::before {
+            content: '✓';
+            color: var(--green);
+            font-weight: 700;
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+
+        /* CODE BLOCK */
+        .code-block {
+            margin-top: 32px;
+            background: #0b150b;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+        }
+
+        .code-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .code-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .code-body {
+            padding: 20px;
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.8;
+            color: #8ab88a;
+            overflow-x: auto;
+        }
+
+        .code-body .kw {
+            color: #c792ea;
+        }
+
+        .code-body .str {
+            color: var(--lime);
+        }
+
+        .code-body .cmt {
+            color: #546e54;
+            font-style: italic;
+        }
+
+        .code-body .num {
+            color: #f78c6c;
+        }
+
+        /* ARCH */
+        .arch-section {
+            background: var(--bg1);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 100px 0;
+        }
+
+        .arch-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 60px;
+        }
+
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-top: 60px;
+            overflow-x: auto;
+        }
+
+        .arch-node {
+            flex: 1;
+            min-width: 160px;
+            text-align: center;
+            padding: 30px 16px;
+            border-radius: 16px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            transition: border-color 0.3s, transform 0.3s;
+            cursor: default;
+        }
+
+        .arch-node:hover {
+            border-color: var(--green);
+            transform: translateY(-4px);
+        }
+
+        .arch-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .arch-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--cream);
+        }
+
+        .arch-desc {
+            font-size: 11px;
+            color: var(--muted);
+            font-family: var(--mono);
+            line-height: 1.5;
+        }
+
+        .arch-arrow {
+            flex-shrink: 0;
+            width: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: var(--muted);
+            position: relative;
+        }
+
+        .arch-arrow::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 1px;
+            background: linear-gradient(90deg, var(--border), var(--green));
+        }
+
+        /* FEATURES */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 56px;
+        }
+
+        .feature-card {
+            padding: 30px;
+            border-radius: 16px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--green), var(--lime));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(91, 206, 122, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .feature-card:hover::after {
+            transform: scaleX(1);
+        }
+
+        .feature-emoji {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+
+        .feature-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--cream);
+        }
+
+        .feature-text {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        /* TECH */
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 48px;
+        }
+
+        .tech-card {
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg1);
+            text-align: center;
+            transition: all 0.25s;
+        }
+
+        .tech-card:hover {
+            border-color: var(--green);
+            background: rgba(91, 206, 122, 0.04);
+        }
+
+        .tech-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .tech-name {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .tech-role {
+            font-size: 10px;
+            color: var(--muted);
+            font-family: var(--mono);
+            letter-spacing: 1px;
+        }
+
+        /* TEAM */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 56px;
+        }
+
+        .team-card {
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            transition: all 0.3s;
+        }
+
+        .team-card:hover {
+            border-color: rgba(91, 206, 122, 0.4);
+            transform: translateY(-4px);
+        }
+
+        .team-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            border: 2px solid var(--border);
+        }
+
+        .team-id {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--green);
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .team-name {
+            font-family: var(--font-h);
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .team-role {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* FUTURE */
+        .future-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-top: 48px;
+        }
+
+        .future-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg1);
+            transition: all 0.25s;
+        }
+
+        .future-item:hover {
+            border-color: rgba(91, 206, 122, 0.3);
+            background: rgba(91, 206, 122, 0.03);
+        }
+
+        .future-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: rgba(91, 206, 122, 0.08);
+            border: 1px solid rgba(91, 206, 122, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .future-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .future-desc {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* REFS */
+        .ref-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 40px;
+        }
+
+        .ref-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg1);
+            font-size: 13px;
+            color: var(--muted);
+            transition: border-color 0.2s;
+        }
+
+        .ref-num {
+            font-family: var(--mono);
+            color: var(--green);
+            font-size: 12px;
+            min-width: 30px;
+        }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--border);
+            background: var(--bg1);
+            padding: 60px;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-family: var(--font-h);
+            font-size: 36px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--green), var(--lime));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+        }
+
+        .footer-sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 32px;
+        }
+
+        .footer-batch {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 2px;
+        }
+
+        /* REVEAL */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ══════════════════════════════════════════
+       DASHBOARD LAYOUT
+    ══════════════════════════════════════════ */
+        #page-dashboard {
+            flex-direction: row;
+            min-height: 100vh;
+            background: #0a0f0a;
+            color: var(--text);
+            font-family: var(--font);
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 220px;
+            background: #111811;
+            border-right: 1px solid #243524;
+            display: flex;
+            flex-direction: column;
+            padding: 28px 0;
+            z-index: 100;
+        }
+
+        .logo {
+            padding: 0 24px 28px;
+            border-bottom: 1px solid #243524;
+        }
+
+        .logo-mark {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #4ade80, #a3e635);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #4ade80, #a3e635);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .d-nav {
+            flex: 1;
+            padding: 20px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .d-nav-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #6b8c6b;
+            padding: 8px 12px 4px;
+            text-transform: uppercase;
+        }
+
+        .d-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b8c6b;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+
+        .d-nav-item:hover {
+            background: #141f14;
+            color: var(--text);
+        }
+
+        .d-nav-item.active {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+            border-color: rgba(74, 222, 128, 0.2);
+        }
+
+        .d-nav-item .icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #243524;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #6b8c6b;
+            font-family: var(--mono);
+        }
+
+        .dot-live {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 6px #4ade80;
+            animation: pulse2 2s infinite;
+        }
+
+        @keyframes pulse2 {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.4
+            }
+        }
+
+        /* MAIN */
+        .d-main {
+            margin-left: 220px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+        }
+
+        .topbar {
+            padding: 20px 32px;
+            border-bottom: 1px solid #243524;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(10, 15, 10, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .page-sub {
+            font-size: 12px;
+            color: #6b8c6b;
+            font-family: var(--mono);
+            margin-top: 2px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .d-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: var(--font);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+        }
+
+        .d-btn-outline {
+            background: transparent;
+            border: 1px solid #243524;
+            color: #6b8c6b;
+        }
+
+        .d-btn-outline:hover {
+            border-color: #4ade80;
+            color: #4ade80;
+        }
+
+        .d-btn-primary {
+            background: linear-gradient(135deg, #4ade80, #a3e635);
+            color: #0a0f0a;
+        }
+
+        .d-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(74, 222, 128, 0.3);
+        }
+
+        .d-content {
+            padding: 28px 32px;
+        }
+
+        /* KPI */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: #141f14;
+            border: 1px solid #243524;
+            border-radius: 14px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+            animation: fadeInUp 0.4s ease both;
+        }
+
+        .kpi-card:hover {
+            border-color: #4ade80;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            border-radius: 0 14px 0 80px;
+            opacity: 0.06;
+        }
+
+        .kpi-card.moisture::before {
+            background: #60a5fa;
+        }
+
+        .kpi-card.temp::before {
+            background: #fbbf24;
+        }
+
+        .kpi-card.humidity::before {
+            background: #4ade80;
+        }
+
+        .kpi-card.pump::before {
+            background: #a3e635;
+        }
+
+        .kpi-card:nth-child(1) {
+            animation-delay: 0.05s
+        }
+
+        .kpi-card:nth-child(2) {
+            animation-delay: 0.1s
+        }
+
+        .kpi-card:nth-child(3) {
+            animation-delay: 0.15s
+        }
+
+        .kpi-card:nth-child(4) {
+            animation-delay: 0.2s
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .kpi-icon {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .kpi-label {
+            font-size: 11px;
+            color: #6b8c6b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .kpi-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            font-size: 10px;
+            font-family: var(--mono);
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 20px;
+        }
+
+        .badge-ok {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+
+        .badge-warn {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+
+        .badge-alert {
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        .badge-info {
+            background: rgba(96, 165, 250, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        /* GRID */
+        .d-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .d-grid-3 {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .panel {
+            background: #141f14;
+            border: 1px solid #243524;
+            border-radius: 14px;
+            padding: 22px;
+            animation: fadeInUp 0.5s ease both;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .panel-sub {
+            font-size: 11px;
+            color: #6b8c6b;
+            margin-top: 2px;
+            font-family: var(--mono);
+        }
+
+        /* CHART */
+        .chart-area {
+            height: 180px;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            padding-top: 16px;
+        }
+
+        .chart-bar-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
+        .chart-bar {
+            width: 100%;
+            border-radius: 6px 6px 2px 2px;
+            transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+        }
+
+        .chart-bar:hover {
+            filter: brightness(1.2);
+        }
+
+        .bar-moisture {
+            background: linear-gradient(180deg, #60a5fa, rgba(96, 165, 250, 0.4));
+        }
+
+        .bar-temp {
+            background: linear-gradient(180deg, #fbbf24, rgba(251, 191, 36, 0.4));
+        }
+
+        .chart-label {
+            font-size: 9px;
+            color: #6b8c6b;
+            font-family: var(--mono);
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #6b8c6b;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* FIELD MAP */
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .field-zone {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-family: var(--mono);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            font-weight: 500;
+        }
+
+        .field-zone:hover {
+            transform: scale(1.05);
+        }
+
+        .zone-wet {
+            background: rgba(96, 165, 250, 0.15);
+            border-color: rgba(96, 165, 250, 0.3);
+            color: #60a5fa;
+        }
+
+        .zone-ok {
+            background: rgba(74, 222, 128, 0.12);
+            border-color: rgba(74, 222, 128, 0.25);
+            color: #4ade80;
+        }
+
+        .zone-dry {
+            background: rgba(251, 191, 36, 0.12);
+            border-color: rgba(251, 191, 36, 0.25);
+            color: #fbbf24;
+        }
+
+        .zone-alert {
+            background: rgba(248, 113, 113, 0.12);
+            border-color: rgba(248, 113, 113, 0.3);
+            color: #f87171;
+        }
+
+        .zone-num {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        /* ALERTS */
+        .alert-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: #182518;
+            border: 1px solid #243524;
+            transition: border-color 0.2s;
+        }
+
+        .alert-item:hover {
+            border-color: #4ade80;
+        }
+
+        .alert-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .alert-body {
+            flex: 1;
+        }
+
+        .alert-msg {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .alert-meta {
+            font-size: 10px;
+            color: #6b8c6b;
+            font-family: var(--mono);
+            margin-top: 2px;
+        }
+
+        /* CONTROLS */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .ctrl-card {
+            background: #182518;
+            border: 1px solid #243524;
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: border-color 0.2s;
+        }
+
+        .ctrl-card:hover {
+            border-color: #4ade80;
+        }
+
+        .ctrl-left {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .ctrl-name {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .ctrl-status {
+            font-size: 10px;
+            color: #6b8c6b;
+            font-family: var(--mono);
+        }
+
+        /* TOGGLE */
+        .toggle {
+            width: 40px;
+            height: 22px;
+            background: #243524;
+            border-radius: 11px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+
+        .toggle.on {
+            background: #22c55e;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .toggle.on::after {
+            transform: translateX(18px);
+        }
+
+        /* SENSOR TABLE */
+        .sensor-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .sensor-table th {
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #6b8c6b;
+            border-bottom: 1px solid #243524;
+        }
+
+        .sensor-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(36, 53, 36, 0.5);
+            font-family: var(--mono);
+        }
+
+        .sensor-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .sensor-table tr:hover td {
+            background: rgba(74, 222, 128, 0.03);
+        }
+
+        .sensor-id {
+            color: #6b8c6b;
+            font-size: 10px;
+        }
+
+        .meter {
+            width: 80px;
+            height: 4px;
+            background: #243524;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .meter-blue {
+            background: #60a5fa;
+        }
+
+        .meter-green {
+            background: #4ade80;
+        }
+
+        .meter-amber {
+            background: #fbbf24;
+        }
+
+        .meter-red {
+            background: #f87171;
+        }
+
+        #live-time {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: #6b8c6b;
+        }
+
+        /* DASHBOARD PANEL SECTIONS */
+        .d-panel-section {
+            display: none;
+        }
+
+        .d-panel-section.active {
+            display: block;
+        }
+
+        /* BACK BUTTON */
+        .back-to-landing {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid #243524;
+            color: #6b8c6b;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font);
+        }
+
+        .back-to-landing:hover {
+            border-color: #4ade80;
+            color: #4ade80;
+        }
+
+        /* MODAL for Add Sensor */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #141f14;
+            border: 1px solid #243524;
+            border-radius: 20px;
+            padding: 32px;
+            width: 420px;
+            max-width: 90vw;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .modal h3 {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .modal p {
+            font-size: 12px;
+            color: #6b8c6b;
+            margin-bottom: 24px;
+            font-family: var(--mono);
+        }
+
+        .modal-field {
+            margin-bottom: 16px;
+        }
+
+        .modal-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6b8c6b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .modal-field input,
+        .modal-field select {
+            width: 100%;
+            padding: 10px 14px;
+            background: #182518;
+            border: 1px solid #243524;
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 12px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .modal-field input:focus,
+        .modal-field select:focus {
+            border-color: #4ade80;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .modal-cancel {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #243524;
+            border-radius: 8px;
+            color: #6b8c6b;
+            cursor: pointer;
+            font-family: var(--font);
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .modal-cancel:hover {
+            border-color: #6b8c6b;
+        }
+
+        .modal-submit {
+            flex: 2;
+            padding: 10px;
+            background: linear-gradient(135deg, #4ade80, #a3e635);
+            border: none;
+            border-radius: 8px;
+            color: #0a0f0a;
+            cursor: pointer;
+            font-family: var(--font);
+            font-weight: 800;
+            font-size: 12px;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 9999;
+            background: #141f14;
+            border: 1px solid #4ade80;
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4ade80;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Tooltip for chart bars */
+        .chart-tooltip {
+            position: absolute;
+            background: #182518;
+            border: 1px solid #243524;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text);
+            pointer-events: none;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+            top: 0;
+        }
+
+        /* Export animation */
+        @keyframes exportPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4)
+            }
+
+            100% {
+                box-shadow: 0 0 0 12px rgba(74, 222, 128, 0)
+            }
+        }
+
+        .exporting {
+            animation: exportPulse 0.6s ease;
+        }
+    
+        /* ══════════════════════════════════════════
+           LOGIN PAGE
+        ══════════════════════════════════════════ */
+        #page-login {
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg);
+        }
+
+        .login-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            pointer-events: none;
+            animation: drift 14s ease-in-out infinite alternate;
+        }
+        .login-orb-1 { width: 600px; height: 600px; top: -180px; left: -180px; background: rgba(91,206,122,0.07); }
+        .login-orb-2 { width: 500px; height: 500px; bottom: -160px; right: -160px; background: rgba(181,229,80,0.05); animation-delay: -6s; }
+
+        .login-card {
+            position: relative;
+            z-index: 2;
+            width: 440px;
+            max-width: calc(100vw - 32px);
+            background: rgba(11,22,11,0.75);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(91,206,122,0.18);
+            border-radius: 24px;
+            padding: 44px 40px 40px;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(91,206,122,0.06);
+            animation: fadeUp 0.7s ease both;
+        }
+
+        .login-logo {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 28px; justify-content: center;
+        }
+        .login-logo-icon {
+            width: 44px; height: 44px; background: linear-gradient(135deg, var(--green), var(--lime));
+            border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;
+        }
+        .login-logo-text {
+            font-family: var(--font-h); font-size: 26px; font-weight: 900;
+            background: linear-gradient(90deg, var(--green), var(--lime));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .login-heading { font-family: var(--font-h); font-size: 22px; font-weight: 700; color: var(--cream); text-align: center; margin-bottom: 6px; }
+        .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 32px; font-family: var(--mono); }
+        .login-field { margin-bottom: 18px; }
+        .login-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; font-family: var(--mono); }
+        .login-input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; color: var(--cream); font-family: var(--mono); font-size: 13px; outline: none; transition: all 0.2s; }
+        .login-input:focus { border-color: rgba(91,206,122,0.5); background: rgba(91,206,122,0.04); box-shadow: 0 0 0 3px rgba(91,206,122,0.08); }
+        .login-btn-submit { width: 100%; padding: 13px; border-radius: 10px; background: linear-gradient(135deg, var(--green), var(--lime)); color: #060d06; font-weight: 800; font-size: 14px; border: none; cursor: pointer; transition: all 0.25s; }
+        .login-btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(91,206,122,0.4); }
+        
+        .login-error { display: none; background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #f87171; margin-bottom: 16px; font-family: var(--mono); text-align: center; }
+        .login-error.show { display: block; }
+        .shake { animation: shake 0.4s ease; }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+    </style>
+</head>
+
+<body>
+
+    <!-- ── Custom Cursor ── -->
+    <div class="cursor" id="cursor"></div>
+    <div class="cursor-ring" id="cursor-ring"></div>
+
+    <!-- ── Progress Bar ── -->
+    <div class="progress-bar" id="progress"></div>
+
+    <!-- ── Toast ── -->
+    <div class="toast" id="toast">✓ <span id="toast-msg">Done</span></div>
+
+    <!-- ── Add Sensor Modal ── -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h3>+ Add New Sensor</h3>
+            <p>Register a sensor node to the network</p>
+            <div class="modal-field">
+                <label>Sensor ID</label>
+                <input type="text" id="new-sensor-id" placeholder="e.g. S-16" />
+            </div>
+            <div class="modal-field">
+                <label>Zone</label>
+                <select id="new-sensor-zone">
+                    <option>Zone 01</option>
+                    <option>Zone 02</option>
+                    <option>Zone 03</option>
+                    <option>Zone 04</option>
+                    <option>Zone 05</option>
+                    <option>Zone 06</option>
+                    <option>Zone 16</option>
+                    <option>Zone 17</option>
+                    <option>Zone 18</option>
+                    <option>Zone 19</option>
+                    <option>Zone 20</option>
+                </select>
+            </div>
+            <div class="modal-field">
+                <label>Sensor Type</label>
+                <select>
+                    <option>DHT22 (Temp + Humidity)</option>
+                    <option>YL-69 (Soil Moisture)</option>
+                    <option>BH1750 (Light)</option>
+                    <option>Multi-Sensor</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-submit" onclick="addSensor()">Register Sensor</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <div id="page-login">
+        <div class="login-orb login-orb-1"></div>
+        <div class="login-orb login-orb-2"></div>
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="login-logo-icon">🌱</div>
+                <div class="login-logo-text">AgroSense</div>
+            </div>
+            <div class="login-heading">Farmer Portal</div>
+            <div class="login-sub">Sign in to access your farm dashboard</div>
+            
+            <div class="login-error" id="login-error">Invalid credentials. Try again.</div>
+            
+            <form onsubmit="handleLogin(event)">
+                <div class="login-field">
+                    <label>Email Address</label>
+                    <input type="text" id="login-email" class="login-input" placeholder="farmer@agrosense.io" value="farmer@agrosense.io" />
+                </div>
+                <div class="login-field">
+                    <label>Password</label>
+                    <input type="password" id="login-pw" class="login-input" placeholder="••••••••" value="demo123" />
+                </div>
+                <button type="submit" class="login-btn-submit">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+     LANDING PAGE
+══════════════════════════════════════════════════════ -->
+    <div id="page-landing">
+
+        <!-- NAV -->
+        <nav id="landing-nav">
+            <div class="nav-logo" onclick="scrollToTop()">
+                <div class="nav-logo-icon">🌱</div>
+                <span class="nav-logo-text">AgroSense</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#problem">Problem</a></li>
+                <li><a href="#solution">Solution</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#team">Team</a></li>
+            </ul>
+            <a class="nav-cta" onclick="goToDashboard()" style="cursor:pointer">View Dashboard →</a>
+        </nav>
+
+        <!-- HERO -->
+        <div class="hero" id="home">
+            <div class="orb orb1"></div>
+            <div class="orb orb2"></div>
+            <div class="hero-badge">
+                <div class="badge-dot"></div>Batch 11 Field Project · 2024
+            </div>
+            <h1 class="hero-h1">Smart Farming<br /><em>through Sensor</em><br />Networks</h1>
+            <p class="hero-sub">Real-time IoT monitoring and automated irrigation for modern agriculture — reducing
+                water waste, improving yield, and empowering farmers with data.</p>
+            <div class="hero-btns">
+                <a class="btn-primary-l" href="#features" onclick="smoothTo(event,'features')">Explore System</a>
+                <a class="btn-ghost-l" href="#team" onclick="smoothTo(event,'team')">Meet the Team</a>
+            </div>
+            <div class="scroll-hint">
+                <div class="scroll-line"></div>Scroll
+            </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats">
+            <div class="stat-item reveal">
+                <div class="stat-num" data-count="20">0</div>
+                <div class="stat-label">Field Zones Monitored</div>
+            </div>
+            <div class="stat-item reveal">
+                <div class="stat-num" data-count="40">0<span>%</span></div>
+                <div class="stat-label">Water Savings</div>
+            </div>
+            <div class="stat-item reveal">
+                <div class="stat-num" data-count="15">0</div>
+                <div class="stat-label">Sensor Nodes</div>
+            </div>
+            <div class="stat-item reveal">
+                <div class="stat-num" data-count="30">0<span>s</span></div>
+                <div class="stat-label">Refresh Interval</div>
+            </div>
+        </div>
+
+        <!-- PROBLEM -->
+        <div class="l-section" id="problem">
+            <div class="two-col">
+                <div class="reveal">
+                    <div class="section-tag">01 · Problem Statement</div>
+                    <h2 class="section-h2">Traditional farming is <em>flying blind</em></h2>
+                    <p class="section-p">Farmers rely on guesswork, fixed schedules, and manual inspection across acres
+                        of land. This leads to resource waste, crop loss, and unsustainable practices.</p>
+                </div>
+                <div class="visual-box reveal">
+                    <ul class="problem-list">
+                        <li>Manual monitoring of soil and weather conditions</li>
+                        <li>Fixed irrigation schedules regardless of actual need</li>
+                        <li>No real-time visibility across large fields</li>
+                        <li>High labor dependency — error-prone and slow</li>
+                        <li>Water and fertilizer wastage from over-application</li>
+                        <li>No early detection of unfavorable crop conditions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- SOLUTION -->
+        <div class="l-section-full" style="background:var(--bg1)" id="solution">
+            <div class="l-section-full-inner">
+                <div class="two-col reverse">
+                    <div class="reveal">
+                        <div class="section-tag">02 · Proposed Solution</div>
+                        <h2 class="section-h2">Intelligent, <em>automated</em> farm management</h2>
+                        <p class="section-p">A wireless sensor network streams real-time field data to a web dashboard.
+                            Automated irrigation kicks in exactly when and where it's needed — no human in the loop
+                            required.</p>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <div class="code-dots">
+                                    <div class="code-dot" style="background:#f87171"></div>
+                                    <div class="code-dot" style="background:#fbbf24"></div>
+                                    <div class="code-dot" style="background:#4ade80"></div>
+                                </div>
+                                <span>sensor_node.cpp · ESP8266</span>
+                            </div>
+                            <div class="code-body">
+                                <span class="cmt">// Auto-irrigation trigger logic</span><br />
+                                <span class="kw">if</span> (soilMoisture &lt; <span class="num">40</span>) {<br />
+                                &nbsp;&nbsp;activatePump(<span class="str">"PUMP-01"</span>);<br />
+                                &nbsp;&nbsp;logEvent(<span class="str">"auto_irrigation"</span>, zone);<br />
+                                &nbsp;&nbsp;sendAlert(<span class="str">"Low moisture: "</span> + moisture);<br />
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="visual-box reveal">
+                        <ul class="solution-list">
+                            <li>Sensor-based real-time field monitoring</li>
+                            <li>Microcontroller-controlled automated irrigation</li>
+                            <li>Web &amp; mobile dashboard for remote access</li>
+                            <li>Auto-alerts on threshold violations</li>
+                            <li>Water usage logging and analytics</li>
+                            <li>Low-cost hardware — no technical expertise required</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ARCHITECTURE -->
+        <div class="arch-section" id="architecture">
+            <div class="arch-inner">
+                <div class="reveal">
+                    <div class="section-tag">03 · System Architecture</div>
+                    <h2 class="section-h2">From <em>soil to screen</em> — end-to-end</h2>
+                </div>
+                <div class="arch-flow reveal">
+                    <div class="arch-node"><span class="arch-icon">🌱</span>
+                        <div class="arch-title">Sensors</div>
+                        <div class="arch-desc">DHT22 · Soil Probe<br />Light Sensor · pH</div>
+                    </div>
+                    <div class="arch-arrow">→</div>
+                    <div class="arch-node"><span class="arch-icon">📡</span>
+                        <div class="arch-title">MCU Node</div>
+                        <div class="arch-desc">ESP8266 / Arduino<br />WiFi · MQTT</div>
+                    </div>
+                    <div class="arch-arrow">→</div>
+                    <div class="arch-node"><span class="arch-icon">⚙️</span>
+                        <div class="arch-title">Backend API</div>
+                        <div class="arch-desc">Node.js · Express<br />REST · Auto Logic</div>
+                    </div>
+                    <div class="arch-arrow">→</div>
+                    <div class="arch-node"><span class="arch-icon">🗄️</span>
+                        <div class="arch-title">Database</div>
+                        <div class="arch-desc">SQLite / PostgreSQL<br />Time-Series Data</div>
+                    </div>
+                    <div class="arch-arrow">→</div>
+                    <div class="arch-node"><span class="arch-icon">📊</span>
+                        <div class="arch-title">Dashboard</div>
+                        <div class="arch-desc">HTML · CSS · JS<br />Live Charts · Maps</div>
+                    </div>
+                    <div class="arch-arrow">→</div>
+                    <div class="arch-node"><span class="arch-icon">👨‍🌾</span>
+                        <div class="arch-title">Farmer</div>
+                        <div class="arch-desc">Web Browser<br />Mobile Ready</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FEATURES -->
+        <div class="l-section" id="features">
+            <div class="reveal">
+                <div class="section-tag">04 · Key Features</div>
+                <h2 class="section-h2">Everything you need to<br /><em>run a smart farm</em></h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card reveal">
+                    <div class="feature-emoji">💧</div>
+                    <div class="feature-title">Automated Irrigation</div>
+                    <div class="feature-text">Pumps and valves activate automatically when soil moisture drops below
+                        your configured threshold — no human intervention needed.</div>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-emoji">🌡️</div>
+                    <div class="feature-title">Real-Time Monitoring</div>
+                    <div class="feature-text">Soil moisture, temperature, air humidity, and light intensity streamed
+                        live every 30 seconds from every sensor node in the field.</div>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-emoji">🗺️</div>
+                    <div class="feature-title">Field Zone Map</div>
+                    <div class="feature-text">Visual 5×4 grid map of your farm with color-coded zones — instantly see
+                        which areas are wet, dry, or in critical condition.</div>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-emoji">🔔</div>
+                    <div class="feature-title">Smart Alerts</div>
+                    <div class="feature-text">Auto-generated alerts for low moisture, high temperature, sensor battery
+                        failures, and pump faults — with severity levels.</div>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-emoji">📈</div>
+                    <div class="feature-title">7-Day Analytics</div>
+                    <div class="feature-text">Historical charts track moisture and temperature trends per zone, helping
+                        you understand your crop's patterns over time.</div>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-emoji">⚡</div>
+                    <div class="feature-title">Device Control</div>
+                    <div class="feature-text">Manually toggle pumps, drip valves, and sprinklers from the dashboard.
+                        Switch between manual, auto, and scheduled modes.</div>
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:48px">
+                <button class="btn-primary-l" onclick="goToDashboard()">Open Live Dashboard →</button>
+            </div>
+        </div>
+
+        <!-- TECH STACK -->
+        <div class="l-section-full" style="background:var(--bg1);padding:80px 60px">
+            <div class="l-section-full-inner">
+                <div class="reveal">
+                    <div class="section-tag">05 · Technology Stack</div>
+                    <h2 class="section-h2">Built with <em>proven tools</em></h2>
+                </div>
+                <div class="tech-stack">
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">🌐</div>
+                        <div class="tech-name">HTML / CSS / JS</div>
+                        <div class="tech-role">Frontend</div>
+                    </div>
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">🟢</div>
+                        <div class="tech-name">Node.js + Express</div>
+                        <div class="tech-role">Backend API</div>
+                    </div>
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">🗄️</div>
+                        <div class="tech-name">SQLite</div>
+                        <div class="tech-role">Database</div>
+                    </div>
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">📡</div>
+                        <div class="tech-name">ESP8266</div>
+                        <div class="tech-role">IoT Hardware</div>
+                    </div>
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">🔌</div>
+                        <div class="tech-name">REST API</div>
+                        <div class="tech-role">Communication</div>
+                    </div>
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">🌡️</div>
+                        <div class="tech-name">DHT22 Sensor</div>
+                        <div class="tech-role">Temp & Humidity</div>
+                    </div>
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">💧</div>
+                        <div class="tech-name">YL-69 Sensor</div>
+                        <div class="tech-role">Soil Moisture</div>
+                    </div>
+                    <div class="tech-card reveal">
+                        <div class="tech-icon">☁️</div>
+                        <div class="tech-name">WiFi / MQTT</div>
+                        <div class="tech-role">Data Transport</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FUTURE -->
+        <div class="l-section" id="future">
+            <div class="reveal">
+                <div class="section-tag">06 · Future Enhancements</div>
+                <h2 class="section-h2">Where we're <em>headed next</em></h2>
+            </div>
+            <div class="future-grid">
+                <div class="future-item reveal">
+                    <div class="future-icon">📱</div>
+                    <div>
+                        <div class="future-title">Mobile App Integration</div>
+                        <div class="future-desc">React Native app for iOS & Android with push notifications</div>
+                    </div>
+                </div>
+                <div class="future-item reveal">
+                    <div class="future-icon">🤖</div>
+                    <div>
+                        <div class="future-title">AI Crop Monitoring</div>
+                        <div class="future-desc">ML models for disease detection and yield prediction</div>
+                    </div>
+                </div>
+                <div class="future-item reveal">
+                    <div class="future-icon">🌦️</div>
+                    <div>
+                        <div class="future-title">Weather Forecast Integration</div>
+                        <div class="future-desc">Auto-skip irrigation when rain is forecast in 24h</div>
+                    </div>
+                </div>
+                <div class="future-item reveal">
+                    <div class="future-icon">☀️</div>
+                    <div>
+                        <div class="future-title">Solar Power Monitoring</div>
+                        <div class="future-desc">Track energy harvesting and battery status per node</div>
+                    </div>
+                </div>
+                <div class="future-item reveal">
+                    <div class="future-icon">🌐</div>
+                    <div>
+                        <div class="future-title">Multi-Farm Dashboard</div>
+                        <div class="future-desc">Manage multiple farms from a single account</div>
+                    </div>
+                </div>
+                <div class="future-item reveal">
+                    <div class="future-icon">📷</div>
+                    <div>
+                        <div class="future-title">Computer Vision</div>
+                        <div class="future-desc">Camera nodes with CV for real-time crop health analysis</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REFERENCES -->
+        <div class="l-section-full" style="background:var(--bg1);padding:80px 60px" id="references">
+            <div class="l-section-full-inner">
+                <div class="reveal">
+                    <div class="section-tag">07 · Literature Survey</div>
+                    <h2 class="section-h2">Standing on the<br /><em>shoulders of research</em></h2>
+                </div>
+                <div class="ref-list">
+                    <div class="ref-item reveal"><span class="ref-num">[01]</span>Patil et al. [2023] — Smart
+                        Agriculture System Using Wireless Sensor Networks</div>
+                    <div class="ref-item reveal"><span class="ref-num">[02]</span>Gondchawar & Kawitkar [2023] —
+                        IoT-Based Smart Agriculture for Precision Farming</div>
+                    <div class="ref-item reveal"><span class="ref-num">[03]</span>Singh et al. [2024] — Intelligent
+                        Irrigation System Using Sensor Networks</div>
+                    <div class="ref-item reveal"><span class="ref-num">[04]</span>Sharma et al. [2024] — Crop Monitoring
+                        Using IoT Sensors and Data Analytics</div>
+                    <div class="ref-item reveal"><span class="ref-num">[05]</span>Li et al. [2023] — Energy-Efficient
+                        Sensor Networks for Smart Farming</div>
+                    <div class="ref-item reveal"><span class="ref-num">[06]</span>Ayaz et al. [2023] — Internet of
+                        Things (IoT) Based Smart Agriculture Using Sensor Networks</div>
+                    <div class="ref-item reveal"><span class="ref-num">[07]</span>Reddy & Kumar [2024] — Real-Time Soil
+                        and Weather Monitoring Using Wireless Sensor Networks</div>
+                    <div class="ref-item reveal"><span class="ref-num">[08]</span>Alavi et al. [2023] — Cloud-Enabled
+                        Smart Farming System with Distributed Sensor Nodes</div>
+                    <div class="ref-item reveal"><span class="ref-num">[09]</span>Mehra et al. [2024] — Precision
+                        Agriculture Using IoT Sensors and Data Analytics</div>
+                    <div class="ref-item reveal"><span class="ref-num">[10]</span>Verma & Singh [2023] — Automated Crop
+                        Monitoring and Smart Irrigation Using Sensor Networks</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEAM -->
+        <div class="l-section" id="team">
+            <div class="reveal">
+                <div class="section-tag">08 · Our Team</div>
+                <h2 class="section-h2">The people <em>behind the code</em></h2>
+                <p class="section-p">Batch 11 · Department of Computer Science and Engineering</p>
+            </div>
+            <div class="team-grid">
+                <div class="team-card reveal">
+                    <div class="team-avatar">👨‍💻</div>
+                    <div class="team-id">241FA04022</div>
+                    <div class="team-name">A. Raghavendra</div>
+                    <div class="team-role">Backend &amp; Database</div>
+                </div>
+                <div class="team-card reveal">
+                    <div class="team-avatar">👨‍🔬</div>
+                    <div class="team-id">241FA04096</div>
+                    <div class="team-name">K. Srikanth</div>
+                    <div class="team-role">Hardware &amp; IoT</div>
+                </div>
+                <div class="team-card reveal">
+                    <div class="team-avatar">👩‍🎨</div>
+                    <div class="team-id">241FA04651</div>
+                    <div class="team-name">P. Mahathi</div>
+                    <div class="team-role">Frontend &amp; UI/UX</div>
+                </div>
+                <div class="team-card reveal">
+                    <div class="team-avatar">👨‍🏗️</div>
+                    <div class="team-id">241FA04778</div>
+                    <div class="team-name">U. Hemanth</div>
+                    <div class="team-role">System Architecture</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer>
+            <div class="footer-logo">AgroSense</div>
+            <div class="footer-sub">Smart Farming through Sensor Networks</div>
+            <div class="footer-batch">Batch 11 Field Project · 2024 · All Rights Reserved</div>
+        </footer>
+
+    </div><!-- /page-landing -->
+
+
+    <!-- ══════════════════════════════════════════════════════
+     DASHBOARD PAGE
+══════════════════════════════════════════════════════ -->
+    <div id="page-dashboard">
+
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <div class="logo">
+                <div class="logo-mark" onclick="goToLanding()">
+                    <div class="logo-icon">🌱</div>
+                    <span class="logo-text">AgroSense</span>
+                </div>
+            </div>
+
+            <div class="d-nav">
+                <div class="d-nav-label">Monitor</div>
+                <div class="d-nav-item active" onclick="showSection('overview',this)"><span class="icon">📊</span>
+                    Dashboard</div>
+                <div class="d-nav-item" onclick="showSection('sensors',this)"><span class="icon">🌡️</span> Sensors
+                </div>
+                <div class="d-nav-item" onclick="showSection('fieldmap',this)"><span class="icon">🗺️</span> Field Map
+                </div>
+
+                <div class="d-nav-label">Control</div>
+                <div class="d-nav-item" onclick="showSection('irrigation',this)"><span class="icon">💧</span> Irrigation
+                </div>
+                <div class="d-nav-item" onclick="showSection('automation',this)"><span class="icon">⚙️</span> Automation
+                </div>
+
+                <div class="d-nav-label">Insights</div>
+                <div class="d-nav-item" onclick="showSection('analytics',this)"><span class="icon">📈</span> Analytics
+                </div>
+                <div class="d-nav-item" onclick="showSection('alertspage',this)">
+                    <span class="icon">🔔</span> Alerts
+                    <span id="alert-badge"
+                        style="margin-left:auto;background:#f87171;color:white;font-size:9px;padding:1px 6px;border-radius:10px;">3</span>
+                </div>
+                <div class="d-nav-item" onclick="showSection('energy',this)"><span class="icon">⚡</span> Energy</div>
+
+                <div class="d-nav-label">System</div>
+                <div class="d-nav-item" onclick="showSection('settings',this)"><span class="icon">⚙️</span> Settings
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-pill">
+                    <div class="dot-live"></div>System Online
+                </div>
+            </div>
+        </nav>
+
+        <!-- MAIN -->
+        <div class="d-main">
+            <div class="topbar">
+                <div>
+                    <div class="page-title" id="topbar-title">Farm Dashboard</div>
+                    <div class="page-sub">Field A — Sector 3 · <span id="live-time">--:--:--</span></div>
+                </div>
+                <div class="topbar-right">
+                    <button class="back-to-landing" onclick="goToLanding()">← Back to Home</button>
+                    <button class="d-btn d-btn-error" style="border: 1px solid #f87171; color: #f87171; background: transparent; padding: 7px 14px; border-radius: 8px; font-family: var(--font); font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-right: 6px;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'" onclick="handleLogout()">Logout</button>
+                    <button class="d-btn d-btn-outline" onclick="refreshData()">↻ Refresh</button>
+                    <button class="d-btn d-btn-primary" onclick="openModal()">+ Add Sensor</button>
+                </div>
+            </div>
+
+            <div class="d-content">
+
+                <!-- ── OVERVIEW SECTION ── -->
+                <div class="d-panel-section active" id="sec-overview">
+                    <!-- KPIs -->
+                    <div class="kpi-row">
+                        <div class="kpi-card moisture">
+                            <div class="kpi-badge badge-info">NORMAL</div>
+                            <div class="kpi-icon">💧</div>
+                            <div class="kpi-value" id="kpi-moisture">68<span
+                                    style="font-size:18px;font-weight:400">%</span></div>
+                            <div class="kpi-label">Soil Moisture</div>
+                        </div>
+                        <div class="kpi-card temp">
+                            <div class="kpi-badge badge-warn" id="badge-temp">WARM</div>
+                            <div class="kpi-icon">🌡️</div>
+                            <div class="kpi-value" id="kpi-temp">34<span
+                                    style="font-size:18px;font-weight:400">°C</span></div>
+                            <div class="kpi-label">Temperature</div>
+                        </div>
+                        <div class="kpi-card humidity">
+                            <div class="kpi-badge badge-ok">OPTIMAL</div>
+                            <div class="kpi-icon">🌫️</div>
+                            <div class="kpi-value" id="kpi-humidity">72<span
+                                    style="font-size:18px;font-weight:400">%</span></div>
+                            <div class="kpi-label">Air Humidity</div>
+                        </div>
+                        <div class="kpi-card pump">
+                            <div class="kpi-badge badge-ok" id="badge-pump">ACTIVE</div>
+                            <div class="kpi-icon">⚡</div>
+                            <div class="kpi-value" id="kpi-pump">ON</div>
+                            <div class="kpi-label">Pump Status</div>
+                        </div>
+                    </div>
+
+                    <!-- Chart + Field Map -->
+                    <div class="d-grid-3">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <div>
+                                    <div class="panel-title">7-Day Sensor History</div>
+                                    <div class="panel-sub">Soil moisture &amp; temperature trends</div>
+                                </div>
+                                <div style="display:flex;gap:6px">
+                                    <button class="d-btn d-btn-outline" style="padding:4px 10px;font-size:10px"
+                                        onclick="switchChartView('W',this)">W</button>
+                                    <button class="d-btn d-btn-outline" style="padding:4px 10px;font-size:10px"
+                                        onclick="switchChartView('M',this)">M</button>
+                                </div>
+                            </div>
+                            <div style="position:relative">
+                                <div class="chart-area" id="chart"></div>
+                                <div class="chart-tooltip" id="chart-tooltip"></div>
+                            </div>
+                            <div class="chart-legend">
+                                <div class="legend-item">
+                                    <div class="legend-dot" style="background:#60a5fa"></div>Soil Moisture (%)
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-dot" style="background:#fbbf24"></div>Temperature (°C)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel">
+                            <div class="panel-header">
+                                <div>
+                                    <div class="panel-title">Field Zones</div>
+                                    <div class="panel-sub">5×4 grid · 20 zones</div>
+                                </div>
+                            </div>
+                            <div class="field-grid" id="field-grid"></div>
+                            <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+                                <div class="legend-item">
+                                    <div class="legend-dot" style="background:#60a5fa"></div>Wet
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-dot" style="background:#4ade80"></div>OK
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-dot" style="background:#fbbf24"></div>Dry
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-dot" style="background:#f87171"></div>Alert
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls + Alerts -->
+                    <div class="d-grid-2">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <div>
+                                    <div class="panel-title">Pump &amp; Device Control</div>
+                                    <div class="panel-sub">Manual override</div>
+                                </div>
+                            </div>
+                            <div class="controls-grid">
+                                <div class="ctrl-card">
+                                    <div class="ctrl-left">
+                                        <div class="ctrl-name">Main Pump</div>
+                                        <div class="ctrl-status" id="s-pump">Active · Auto Mode</div>
+                                    </div>
+                                    <div class="toggle on" id="t-pump" onclick="toggleCtrl('t-pump','s-pump')"></div>
+                                </div>
+                                <div class="ctrl-card">
+                                    <div class="ctrl-left">
+                                        <div class="ctrl-name">Drip Irrigation</div>
+                                        <div class="ctrl-status" id="s-drip">Inactive</div>
+                                    </div>
+                                    <div class="toggle" id="t-drip" onclick="toggleCtrl('t-drip','s-drip')"></div>
+                                </div>
+                                <div class="ctrl-card">
+                                    <div class="ctrl-left">
+                                        <div class="ctrl-name">Sprinkler Zone A</div>
+                                        <div class="ctrl-status" id="s-sa">Active</div>
+                                    </div>
+                                    <div class="toggle on" id="t-sa" onclick="toggleCtrl('t-sa','s-sa')"></div>
+                                </div>
+                                <div class="ctrl-card">
+                                    <div class="ctrl-left">
+                                        <div class="ctrl-name">Sprinkler Zone B</div>
+                                        <div class="ctrl-status" id="s-sb">Inactive</div>
+                                    </div>
+                                    <div class="toggle" id="t-sb" onclick="toggleCtrl('t-sb','s-sb')"></div>
+                                </div>
+                                <div class="ctrl-card">
+                                    <div class="ctrl-left">
+                                        <div class="ctrl-name">Fertilizer Dosing</div>
+                                        <div class="ctrl-status" id="s-fert">Scheduled · 06:00</div>
+                                    </div>
+                                    <div class="toggle on" id="t-fert" onclick="toggleCtrl('t-fert','s-fert')"></div>
+                                </div>
+                                <div class="ctrl-card">
+                                    <div class="ctrl-left">
+                                        <div class="ctrl-name">Weather Station</div>
+                                        <div class="ctrl-status" id="s-wx">Online</div>
+                                    </div>
+                                    <div class="toggle on" id="t-wx" onclick="toggleCtrl('t-wx','s-wx')"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel">
+                            <div class="panel-header">
+                                <div>
+                                    <div class="panel-title">Recent Alerts</div>
+                                    <div class="panel-sub">Last 24 hours</div>
+                                </div>
+                                <span style="font-size:10px;color:#6b8c6b;font-family:var(--mono)">3 active</span>
+                            </div>
+                            <div class="alert-list">
+                                <div class="alert-item">
+                                    <div class="alert-dot" style="background:#f87171"></div>
+                                    <div class="alert-body">
+                                        <div class="alert-msg">Zone 14 — Critically Low Moisture (22%)</div>
+                                        <div class="alert-meta">Sensor S-14 · 14 min ago · Auto-irrigation triggered
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="alert-item">
+                                    <div class="alert-dot" style="background:#fbbf24"></div>
+                                    <div class="alert-body">
+                                        <div class="alert-msg">High Temperature Alert — 38°C in Zone 8</div>
+                                        <div class="alert-meta">Sensor S-08 · 1h 22min ago · No action taken</div>
+                                    </div>
+                                </div>
+                                <div class="alert-item">
+                                    <div class="alert-dot" style="background:#fbbf24"></div>
+                                    <div class="alert-body">
+                                        <div class="alert-msg">Battery Low — Node N-03 at 12%</div>
+                                        <div class="alert-meta">Hardware · 3h 05min ago · Check required</div>
+                                    </div>
+                                </div>
+                                <div class="alert-item">
+                                    <div class="alert-dot" style="background:#4ade80"></div>
+                                    <div class="alert-body">
+                                        <div class="alert-msg">Irrigation Cycle Completed — Zone A, B, C</div>
+                                        <div class="alert-meta">Main Pump · 5h 40min ago · 340L used</div>
+                                    </div>
+                                </div>
+                                <div class="alert-item">
+                                    <div class="alert-dot" style="background:#60a5fa"></div>
+                                    <div class="alert-body">
+                                        <div class="alert-msg">Weather forecast: Rain expected tomorrow</div>
+                                        <div class="alert-meta">Weather API · 8h ago · Irrigation paused for tomorrow
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sensor Table -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">Live Sensor Readings</div>
+                                <div class="panel-sub">All active nodes · Auto-refresh every 30s</div>
+                            </div>
+                            <button class="d-btn d-btn-outline" style="font-size:11px" onclick="exportCSV()">Export
+                                CSV</button>
+                        </div>
+                        <table class="sensor-table">
+                            <thead>
+                                <tr>
+                                    <th>Sensor ID</th>
+                                    <th>Zone</th>
+                                    <th>Moisture</th>
+                                    <th>Temp</th>
+                                    <th>Humidity</th>
+                                    <th>Light</th>
+                                    <th>Status</th>
+                                    <th>Last Update</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sensor-tbody"></tbody>
+                        </table>
+                    </div>
+                </div><!-- /overview -->
+
+                <!-- ── SENSORS SECTION ── -->
+                <div class="d-panel-section" id="sec-sensors">
+                    <div class="panel" style="margin-bottom:24px">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">All Sensor Nodes</div>
+                                <div class="panel-sub">Real-time readings · Click any row for details</div>
+                            </div>
+                            <button class="d-btn d-btn-outline" onclick="exportCSV()">Export CSV</button>
+                        </div>
+                        <table class="sensor-table">
+                            <thead>
+                                <tr>
+                                    <th>Sensor ID</th>
+                                    <th>Zone</th>
+                                    <th>Moisture</th>
+                                    <th>Temp</th>
+                                    <th>Humidity</th>
+                                    <th>Light</th>
+                                    <th>Status</th>
+                                    <th>Last Update</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sensor-tbody-2"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── FIELD MAP SECTION ── -->
+                <div class="d-panel-section" id="sec-fieldmap">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">Full Field Zone Map</div>
+                                <div class="panel-sub">5×4 grid · 20 monitored zones</div>
+                            </div>
+                        </div>
+                        <div class="field-grid" id="field-grid-2" style="max-width:600px;margin:0 auto"></div>
+                        <div style="margin-top:20px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#60a5fa"></div>Wet (&gt;75%)
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#4ade80"></div>OK (50–75%)
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#fbbf24"></div>Dry (25–50%)
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#f87171"></div>Critical (&lt;25%)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── IRRIGATION SECTION ── -->
+                <div class="d-panel-section" id="sec-irrigation">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">Irrigation Control</div>
+                                <div class="panel-sub">Manual override for all pumps and valves</div>
+                            </div>
+                        </div>
+                        <div class="controls-grid">
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Main Pump</div>
+                                    <div class="ctrl-status" id="s-pump2">Active · Auto Mode</div>
+                                </div>
+                                <div class="toggle on" id="t-pump2" onclick="toggleCtrl('t-pump2','s-pump2')"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Drip Irrigation</div>
+                                    <div class="ctrl-status" id="s-drip2">Inactive</div>
+                                </div>
+                                <div class="toggle" id="t-drip2" onclick="toggleCtrl('t-drip2','s-drip2')"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Sprinkler Zone A</div>
+                                    <div class="ctrl-status" id="s-sa2">Active</div>
+                                </div>
+                                <div class="toggle on" id="t-sa2" onclick="toggleCtrl('t-sa2','s-sa2')"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Sprinkler Zone B</div>
+                                    <div class="ctrl-status" id="s-sb2">Inactive</div>
+                                </div>
+                                <div class="toggle" id="t-sb2" onclick="toggleCtrl('t-sb2','s-sb2')"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Sprinkler Zone C</div>
+                                    <div class="ctrl-status" id="s-sc2">Active</div>
+                                </div>
+                                <div class="toggle on" id="t-sc2" onclick="toggleCtrl('t-sc2','s-sc2')"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Fertilizer Dosing</div>
+                                    <div class="ctrl-status" id="s-fert2">Scheduled · 06:00</div>
+                                </div>
+                                <div class="toggle on" id="t-fert2" onclick="toggleCtrl('t-fert2','s-fert2')"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── AUTOMATION SECTION ── -->
+                <div class="d-panel-section" id="sec-automation">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">Automation Rules</div>
+                                <div class="panel-sub">Configure auto-trigger thresholds</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:14px">
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Auto Irrigation (Moisture &lt; 40%)</div>
+                                    <div class="ctrl-status">Trigger: Low soil moisture → Activate Main Pump</div>
+                                </div>
+                                <div class="toggle on" id="t-auto1" onclick="toggleCtrl('t-auto1',null)"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">High Temp Alert (Temp &gt; 36°C)</div>
+                                    <div class="ctrl-status">Trigger: High temperature → Send alert</div>
+                                </div>
+                                <div class="toggle on" id="t-auto2" onclick="toggleCtrl('t-auto2',null)"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Rain Pause (Forecast: Rain)</div>
+                                    <div class="ctrl-status">Trigger: Rain in 24h → Pause irrigation schedule</div>
+                                </div>
+                                <div class="toggle on" id="t-auto3" onclick="toggleCtrl('t-auto3',null)"></div>
+                            </div>
+                            <div class="ctrl-card">
+                                <div class="ctrl-left">
+                                    <div class="ctrl-name">Battery Alert (Node &lt; 20%)</div>
+                                    <div class="ctrl-status">Trigger: Low battery &rarr; Send maintenance alert</div>
+                                </div>
+                                <div class="toggle on" id="t-auto4" onclick="toggleCtrl('t-auto4',null)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ANALYTICS SECTION -->
+                <div class="d-panel-section" id="sec-analytics">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">7-Day Analytics</div>
+                                <div class="panel-sub">Moisture &amp; temperature trends per zone</div>
+                            </div>
+                        </div>
+                        <div style="position:relative">
+                            <div class="chart-area" id="chart-analytics"></div>
+                            <div class="chart-tooltip" id="chart-tooltip-2"></div>
+                        </div>
+                        <div class="chart-legend" style="margin-top:12px">
+                            <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Soil Moisture (%)</div>
+                            <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Temperature (&deg;C)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ALERTS PAGE SECTION -->
+                <div class="d-panel-section" id="sec-alertspage">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">All Alerts</div>
+                                <div class="panel-sub">Last 48 hours &mdash; all events</div>
+                            </div>
+                            <span id="alert-count-label" style="font-size:10px;color:#6b8c6b;font-family:var(--mono)">3 active</span>
+                        </div>
+                        <div class="alert-list" id="full-alert-list">
+                            <div class="alert-item"><div class="alert-dot" style="background:#f87171"></div><div class="alert-body"><div class="alert-msg">Zone 14 &mdash; Critically Low Moisture (22%)</div><div class="alert-meta">Sensor S-14 &middot; 14 min ago &middot; Auto-irrigation triggered</div></div></div>
+                            <div class="alert-item"><div class="alert-dot" style="background:#fbbf24"></div><div class="alert-body"><div class="alert-msg">High Temperature Alert &mdash; 38&deg;C in Zone 8</div><div class="alert-meta">Sensor S-08 &middot; 1h 22min ago &middot; No action taken</div></div></div>
+                            <div class="alert-item"><div class="alert-dot" style="background:#fbbf24"></div><div class="alert-body"><div class="alert-msg">Battery Low &mdash; Node N-03 at 12%</div><div class="alert-meta">Hardware &middot; 3h 05min ago &middot; Check required</div></div></div>
+                            <div class="alert-item"><div class="alert-dot" style="background:#4ade80"></div><div class="alert-body"><div class="alert-msg">Irrigation Cycle Completed &mdash; Zone A, B, C</div><div class="alert-meta">Main Pump &middot; 5h 40min ago &middot; 340L used</div></div></div>
+                            <div class="alert-item"><div class="alert-dot" style="background:#60a5fa"></div><div class="alert-body"><div class="alert-msg">Weather forecast: Rain expected tomorrow</div><div class="alert-meta">Weather API &middot; 8h ago &middot; Irrigation paused for tomorrow</div></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ENERGY SECTION -->
+                <div class="d-panel-section" id="sec-energy">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">Energy &amp; Battery Status</div>
+                                <div class="panel-sub">Solar harvesting &amp; node battery levels</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:12px">
+                            <div class="ctrl-card"><div class="ctrl-left"><div class="ctrl-name">Node N-01</div><div class="ctrl-status">Battery: 94% &middot; Solar: Active</div></div><div style="font-size:12px;color:#4ade80;font-family:var(--mono)">94%</div></div>
+                            <div class="ctrl-card"><div class="ctrl-left"><div class="ctrl-name">Node N-02</div><div class="ctrl-status">Battery: 78% &middot; Solar: Active</div></div><div style="font-size:12px;color:#4ade80;font-family:var(--mono)">78%</div></div>
+                            <div class="ctrl-card"><div class="ctrl-left"><div class="ctrl-name">Node N-03</div><div class="ctrl-status">Battery: 12% &middot; Solar: Partial</div></div><div style="font-size:12px;color:#f87171;font-family:var(--mono)">12%</div></div>
+                            <div class="ctrl-card"><div class="ctrl-left"><div class="ctrl-name">Node N-04</div><div class="ctrl-status">Battery: 55% &middot; Solar: Active</div></div><div style="font-size:12px;color:#fbbf24;font-family:var(--mono)">55%</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SETTINGS SECTION -->
+                <div class="d-panel-section" id="sec-settings">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">System Settings</div>
+                                <div class="panel-sub">Configure thresholds and preferences</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:16px">
+                            <div class="modal-field"><label>Moisture Threshold (%)</label><input type="number" value="40" min="0" max="100" /></div>
+                            <div class="modal-field"><label>Temperature Alert (&deg;C)</label><input type="number" value="36" min="0" max="60" /></div>
+                            <div class="modal-field"><label>Refresh Interval (seconds)</label><input type="number" value="30" min="5" max="300" /></div>
+                            <div class="modal-field"><label>Farm Name</label><input type="text" value="Farm Field A &mdash; Sector 3" /></div>
+                            <button class="modal-submit" style="max-width:180px" onclick="showToast('Settings saved!')">Save Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /d-content -->
+        </div><!-- /d-main -->
+    </div><!-- /page-dashboard -->
+
+<script>
+    
+    // ─── LOGIN LOGIC ──────────────────────────────────────────────
+    function handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const pw = document.getElementById('login-pw').value;
+        const error = document.getElementById('login-error');
+        const card = document.querySelector('.login-card');
+        
+        if (email === 'farmer@agrosense.io' && pw === 'demo123') {
+            document.body.classList.add('logged-in');
+            error.classList.remove('show');
+            window.scrollTo(0, 0);
+            showToast('Logged in successfully');
+        } else {
+            error.classList.add('show');
+            card.classList.remove('shake');
+            void card.offsetWidth; // trigger reflow
+            card.classList.add('shake');
+        }
+    }
+    
+    function handleLogout() {
+        document.body.classList.remove('logged-in');
+        document.body.classList.remove('dashboard-view');
+        window.scrollTo(0, 0);
+        showToast('Logged out');
+    }
+
+    // ─── PAGE ROUTING ────────────────────────────────────────────
+    function goToDashboard() {
+        document.body.classList.add('dashboard-view');
+        window.scrollTo(0, 0);
+        buildChart();
+        buildFieldGrid();
+        buildTable();
+    }
+
+    function goToLanding() {
+        document.body.classList.remove('dashboard-view');
+        window.scrollTo(0, 0);
+    }
+
+    function scrollToTop() {
+        document.getElementById('page-landing').scrollTo(0, 0);
+        window.scrollTo(0, 0);
+    }
+
+    function smoothTo(e, id) {
+        e.preventDefault();
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ─── DASHBOARD SECTIONS ──────────────────────────────────────
+    const sectionTitles = {
+        overview: 'Farm Dashboard',
+        sensors: 'Sensor Nodes',
+        fieldmap: 'Field Zone Map',
+        irrigation: 'Irrigation Control',
+        automation: 'Automation Rules',
+        analytics: 'Analytics',
+        alertspage: 'Alerts',
+        energy: 'Energy & Battery',
+        settings: 'Settings'
+    };
+
+    function showSection(name, el) {
+        document.querySelectorAll('.d-panel-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.d-nav-item').forEach(n => n.classList.remove('active'));
+        const sec = document.getElementById('sec-' + name);
+        if (sec) sec.classList.add('active');
+        if (el) el.classList.add('active');
+        const titleEl = document.getElementById('topbar-title');
+        if (titleEl) titleEl.textContent = sectionTitles[name] || 'Dashboard';
+        // Build secondary charts/grids when their section opens
+        if (name === 'sensors') buildTable2();
+        if (name === 'fieldmap') buildFieldGrid2();
+        if (name === 'analytics') buildAnalyticsChart();
+    }
+
+    // ─── CUSTOM CURSOR ────────────────────────────────────────────
+    const cursor = document.getElementById('cursor');
+    const ring   = document.getElementById('cursor-ring');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+
+    document.addEventListener('mousemove', e => {
+        mx = e.clientX; my = e.clientY;
+        cursor.style.left = mx + 'px';
+        cursor.style.top  = my + 'px';
+    });
+
+    (function animRing() {
+        rx += (mx - rx) * 0.14;
+        ry += (my - ry) * 0.14;
+        ring.style.left = rx + 'px';
+        ring.style.top  = ry + 'px';
+        requestAnimationFrame(animRing);
+    })();
+
+    document.querySelectorAll('a,button,.feature-card,.team-card,.arch-node').forEach(el => {
+        el.addEventListener('mouseenter', () => {
+            cursor.style.width  = '20px';
+            cursor.style.height = '20px';
+            ring.style.width    = '56px';
+            ring.style.height   = '56px';
+        });
+        el.addEventListener('mouseleave', () => {
+            cursor.style.width  = '10px';
+            cursor.style.height = '10px';
+            ring.style.width    = '36px';
+            ring.style.height   = '36px';
+        });
+    });
+
+    // ─── PROGRESS BAR ─────────────────────────────────────────────
+    const progress = document.getElementById('progress');
+    window.addEventListener('scroll', () => {
+        const s   = document.documentElement;
+        const pct = (s.scrollTop / (s.scrollHeight - s.clientHeight)) * 100;
+        progress.style.width = pct + '%';
+    });
+
+    // ─── STICKY NAV ───────────────────────────────────────────────
+    const landingNav = document.getElementById('landing-nav');
+    window.addEventListener('scroll', () => {
+        if (landingNav) landingNav.classList.toggle('scrolled', window.scrollY > 60);
+    });
+
+    // ─── SCROLL REVEAL ────────────────────────────────────────────
+    const revealObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                e.target.classList.add('visible');
+                revealObs.unobserve(e.target);
+            }
+        });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+    // ─── COUNTER ANIMATION ────────────────────────────────────────
+    const counterObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+            if (!e.isIntersecting) return;
+            const el     = e.target;
+            const end    = parseInt(el.dataset.count);
+            const suffix = el.querySelector('span') ? el.querySelector('span').outerHTML : '';
+            let cur = 0;
+            const step  = end / 40;
+            const timer = setInterval(() => {
+                cur = Math.min(cur + step, end);
+                el.innerHTML = Math.floor(cur) + suffix;
+                if (cur >= end) clearInterval(timer);
+            }, 30);
+            counterObs.unobserve(el);
+        });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('[data-count]').forEach(el => counterObs.observe(el));
+
+    // ─── LIVE CLOCK ───────────────────────────────────────────────
+    function updateClock() {
+        const el = document.getElementById('live-time');
+        if (el) el.textContent = new Date().toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ─── CHART DATA ───────────────────────────────────────────────
+    const days         = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const moistureData = [72, 65, 58, 70, 68, 74, 68];
+    const tempData     = [31, 33, 36, 34, 35, 32, 34];
+
+    function buildChart() {
+        renderBarChart('chart', 'chart-tooltip', days, moistureData, tempData);
+    }
+
+    function buildAnalyticsChart() {
+        renderBarChart('chart-analytics', 'chart-tooltip-2', days, moistureData, tempData);
+    }
+
+    function renderBarChart(chartId, tooltipId, labels, mData, tData) {
+        const chart = document.getElementById(chartId);
+        if (!chart) return;
+        chart.innerHTML = '';
+        const maxM = Math.max(...mData);
+        const maxT = Math.max(...tData);
+        const tooltip = document.getElementById(tooltipId);
+
+        labels.forEach((d, i) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'chart-bar-wrap';
+
+            const bm = document.createElement('div');
+            bm.className = 'chart-bar bar-moisture';
+            bm.style.height = (mData[i] / maxM * 120) + 'px';
+            bm.title = `Moisture: ${mData[i]}%`;
+
+            const bt = document.createElement('div');
+            bt.className = 'chart-bar bar-temp';
+            bt.style.height = (tData[i] / maxT * 80) + 'px';
+            bt.title = `Temp: ${tData[i]}\u00b0C`;
+
+            const lbl = document.createElement('div');
+            lbl.className = 'chart-label';
+            lbl.textContent = d;
+
+            if (tooltip) {
+                [bm, bt].forEach(bar => {
+                    bar.addEventListener('mouseenter', ev => {
+                        tooltip.textContent = bar.title;
+                        tooltip.style.opacity = '1';
+                        tooltip.style.left = (wrap.offsetLeft + 4) + 'px';
+                    });
+                    bar.addEventListener('mouseleave', () => {
+                        tooltip.style.opacity = '0';
+                    });
+                });
+            }
+
+            wrap.appendChild(bm);
+            wrap.appendChild(bt);
+            wrap.appendChild(lbl);
+            chart.appendChild(wrap);
+        });
+    }
+
+    function switchChartView(mode, btn) {
+        // Toggle W/M active button styling
+        btn.closest('div').querySelectorAll('button').forEach(b => b.classList.remove('d-btn-primary'));
+        btn.classList.add('d-btn-primary');
+        // Rebuild with slightly different data for demo
+        const mult = mode === 'M' ? 1.05 : 1;
+        const mD = moistureData.map(v => Math.min(100, Math.round(v * mult)));
+        const tD = tempData.map(v => Math.round(v * mult));
+        renderBarChart('chart', 'chart-tooltip', mode === 'M'
+            ? ['W1','W2','W3','W4']
+            : days, mode === 'M' ? mD.slice(0,4) : mD, mode === 'M' ? tD.slice(0,4) : tD);
+    }
+
+    // ─── FIELD GRID ───────────────────────────────────────────────
+    const zoneTypes = [
+        'zone-ok','zone-wet','zone-ok','zone-dry','zone-ok',
+        'zone-ok','zone-ok','zone-alert','zone-ok','zone-wet',
+        'zone-dry','zone-ok','zone-ok','zone-alert','zone-ok',
+        'zone-ok','zone-wet','zone-ok','zone-ok','zone-dry'
+    ];
+    const zoneMoisture = [68,85,71,28,65,70,73,18,66,82,35,69,72,22,67,74,88,63,70,42];
+
+    function renderFieldGrid(gridId) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+        grid.innerHTML = '';
+        zoneTypes.forEach((cls, i) => {
+            const z = document.createElement('div');
+            z.className = `field-zone ${cls}`;
+            z.innerHTML = `<div class="zone-num">${zoneMoisture[i]}</div><div style="font-size:8px">Z${String(i+1).padStart(2,'0')}</div>`;
+            z.title = `Zone ${i+1}: ${zoneMoisture[i]}% moisture`;
+            grid.appendChild(z);
+        });
+    }
+
+    function buildFieldGrid()  { renderFieldGrid('field-grid'); }
+    function buildFieldGrid2() { renderFieldGrid('field-grid-2'); }
+
+    // ─── TOGGLE CONTROLS ─────────────────────────────────────────
+    function toggleCtrl(toggleId, statusId) {
+        const t = document.getElementById(toggleId);
+        if (!t) return;
+        t.classList.toggle('on');
+        const isOn = t.classList.contains('on');
+        if (statusId) {
+            const s = document.getElementById(statusId);
+            if (!s) return;
+            const labels = {
+                's-pump': isOn ? 'Active \u00b7 Auto Mode'  : 'Inactive',
+                's-drip': isOn ? 'Active'                   : 'Inactive',
+                's-sa'  : isOn ? 'Active'                   : 'Inactive',
+                's-sb'  : isOn ? 'Active'                   : 'Inactive',
+                's-fert': isOn ? 'Scheduled \u00b7 06:00'   : 'Disabled',
+                's-wx'  : isOn ? 'Online'                   : 'Offline',
+                's-pump2': isOn ? 'Active \u00b7 Auto Mode' : 'Inactive',
+                's-drip2': isOn ? 'Active'                  : 'Inactive',
+                's-sa2' : isOn ? 'Active'                   : 'Inactive',
+                's-sb2' : isOn ? 'Active'                   : 'Inactive',
+                's-sc2' : isOn ? 'Active'                   : 'Inactive',
+                's-fert2': isOn ? 'Scheduled \u00b7 06:00'  : 'Disabled',
+            };
+            s.textContent = labels[statusId] || (isOn ? 'Active' : 'Inactive');
+        }
+        showToast(isOn ? 'Device activated' : 'Device deactivated');
+    }
+
+    // ─── SENSOR DATA ─────────────────────────────────────────────
+    const sensorData = [
+        { id:'S-01', zone:'Zone 01', m:68, t:32, h:70, l:820, status:'ok' },
+        { id:'S-02', zone:'Zone 02', m:85, t:30, h:75, l:760, status:'ok' },
+        { id:'S-03', zone:'Zone 03', m:71, t:33, h:68, l:840, status:'ok' },
+        { id:'S-04', zone:'Zone 04', m:28, t:37, h:55, l:900, status:'alert' },
+        { id:'S-08', zone:'Zone 08', m:18, t:38, h:52, l:910, status:'alert' },
+        { id:'S-14', zone:'Zone 14', m:22, t:36, h:58, l:870, status:'alert' },
+        { id:'S-09', zone:'Zone 09', m:66, t:33, h:67, l:795, status:'ok' },
+        { id:'S-10', zone:'Zone 10', m:82, t:31, h:76, l:740, status:'ok' },
+    ];
+
+    function renderSensorTable(tbodyId, data) {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.forEach(s => {
+            const mColor = s.m < 30 ? 'meter-red' : s.m < 50 ? 'meter-amber' : 'meter-blue';
+            const tColor = s.t > 36 ? 'meter-red' : s.t > 33 ? 'meter-amber' : 'meter-green';
+            const badge  = s.status === 'ok'
+                ? '<span class="kpi-badge badge-ok" style="position:static;font-size:9px;padding:2px 6px;">OK</span>'
+                : '<span class="kpi-badge badge-alert" style="position:static;font-size:9px;padding:2px 6px;">ALERT</span>';
+            tbody.insertAdjacentHTML('beforeend', `
+                <tr>
+                    <td><span class="sensor-id">${s.id}</span></td>
+                    <td>${s.zone}</td>
+                    <td><div style="display:flex;align-items:center;gap:8px"><span>${s.m}%</span><div class="meter"><div class="meter-fill ${mColor}" style="width:${s.m}%"></div></div></div></td>
+                    <td><div style="display:flex;align-items:center;gap:8px"><span>${s.t}&deg;C</span><div class="meter"><div class="meter-fill ${tColor}" style="width:${(s.t/45)*100}%"></div></div></div></td>
+                    <td>${s.h}%</td>
+                    <td>${s.l} lux</td>
+                    <td>${badge}</td>
+                    <td style="color:#6b8c6b">Just now</td>
+                </tr>`);
+        });
+    }
+
+    function buildTable()  { renderSensorTable('sensor-tbody',   sensorData); }
+    function buildTable2() { renderSensorTable('sensor-tbody-2', sensorData); }
+
+    // ─── REFRESH DATA ─────────────────────────────────────────────
+    function refreshData() {
+        const m = Math.floor(Math.random() * 20 + 58);
+        const t = Math.floor(Math.random() * 8  + 30);
+        const h = Math.floor(Math.random() * 20 + 60);
+
+        const moistEl = document.getElementById('kpi-moisture');
+        if (moistEl) moistEl.innerHTML = m + '<span style="font-size:18px;font-weight:400">%</span>';
+
+        const tempEl  = document.getElementById('kpi-temp');
+        const badgeT  = document.getElementById('badge-temp');
+        if (tempEl) tempEl.innerHTML = t + '<span style="font-size:18px;font-weight:400">\u00b0C</span>';
+        if (badgeT) {
+            if (t > 36) {
+                badgeT.textContent = 'HOT';
+                badgeT.className   = 'kpi-badge badge-alert';
+            } else if (t > 33) {
+                badgeT.textContent = 'WARM';
+                badgeT.className   = 'kpi-badge badge-warn';
+            } else {
+                badgeT.textContent = 'COOL';
+                badgeT.className   = 'kpi-badge badge-ok';
+            }
+        }
+
+        const humEl = document.getElementById('kpi-humidity');
+        if (humEl) humEl.innerHTML = h + '<span style="font-size:18px;font-weight:400">%</span>';
+
+        buildTable();
+        showToast('Data refreshed');
+    }
+
+    // ─── MODAL ────────────────────────────────────────────────────
+    function openModal() {
+        document.getElementById('modal-overlay').classList.add('open');
+    }
+    function closeModal() {
+        document.getElementById('modal-overlay').classList.remove('open');
+    }
+    document.getElementById('modal-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('modal-overlay')) closeModal();
+    });
+
+    function addSensor() {
+        const id   = document.getElementById('new-sensor-id').value.trim();
+        const zone = document.getElementById('new-sensor-zone').value;
+        if (!id) { alert('Please enter a Sensor ID'); return; }
+        sensorData.push({ id, zone, m: Math.floor(Math.random()*40+40), t: Math.floor(Math.random()*8+28), h: Math.floor(Math.random()*20+60), l: Math.floor(Math.random()*200+700), status:'ok' });
+        buildTable();
+        buildTable2();
+        closeModal();
+        showToast('Sensor ' + id + ' registered!');
+        document.getElementById('new-sensor-id').value = '';
+    }
+
+    // ─── TOAST ────────────────────────────────────────────────────
+    let toastTimer;
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        const m = document.getElementById('toast-msg');
+        if (!t || !m) return;
+        m.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    // ─── EXPORT CSV ───────────────────────────────────────────────
+    function exportCSV() {
+        const rows = [['Sensor ID','Zone','Moisture %','Temp C','Humidity %','Light lux','Status']];
+        sensorData.forEach(s => rows.push([s.id, s.zone, s.m, s.t, s.h, s.l, s.status]));
+        const csv  = rows.map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type:'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'agrosense_data.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('CSV exported!');
+    }
+
+    // ─── AUTO REFRESH ─────────────────────────────────────────────
+    setInterval(refreshData, 30000);
+
+    // ─── INIT ─────────────────────────────────────────────────────
+    buildChart();
+    buildFieldGrid();
+    buildTable();
+</script>
+</body>
+</html>
