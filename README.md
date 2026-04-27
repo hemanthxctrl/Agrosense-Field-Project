@@ -49,7 +49,7 @@ node server.js
 
 ### 2. Open the Application
 The backend serves the API and the frontend concurrently. Open your browser and navigate to:
-👉 **[http://localhost:3000](http://localhost:3000)**
+## 🌐 Live Demo: [agrosense-field-project.onrender.com](https://agrosense-field-project.onrender.com)
 
 ### 3. Demo Login Credentials
 To access the dashboard past the Farmer Portal login page:
