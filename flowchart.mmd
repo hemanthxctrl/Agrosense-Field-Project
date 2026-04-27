@@ -1,0 +1,34 @@
+graph TD
+    subgraph Field_Layer["Field Hardware Layer"]
+        S1("Soil Moisture Sensors") --> H{"ESP8266 / Arduino Node"}
+        S2("DHT22 Temp & Humidity") --> H
+        H -- "HTTP POST /api/readings" --> API
+        API -- "Device Toggle Commands" --> Act("Pumps, Valves, Sprinklers")
+    end
+
+    subgraph Backend_Server["Backend Server (Node.js + Express)"]
+        API("REST API (server.js)")
+        Alerts("Alert Engine (Threshold Checks)")
+        DB[("SQLite Database (agrosense.db)")]
+        
+        API --> Alerts
+        Alerts --> DB
+        API <--> DB
+    end
+
+    subgraph Frontend_UI["User Interface (Frontend)"]
+        Auth("Farmer Login Portal")
+        UI("Real-time Dashboard (index.html)")
+        
+        Auth --> UI
+        UI -- "GET Data (Sensors, History, Alerts)" --> API
+        UI -- "PATCH /api/devices (Manual Control)" --> API
+        API -- "JSON Responses" --> UI
+    end
+    
+    classDef hardware fill:#f9d0c4,stroke:#333,stroke-width:2px;
+    classDef server fill:#c4ddf9,stroke:#333,stroke-width:2px;
+    classDef ui fill:#c4f9d0,stroke:#333,stroke-width:2px;
+    class H,S1,S2,Act hardware;
+    class API,Alerts,DB server;
+    class UI,Auth ui;

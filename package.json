@@ -1,8 +1,22 @@
 {
+  "name": "agrosense",
+  "version": "1.0.0",
+  "description": "AgroSense - Smart Farming through Sensor Networks",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
-    "better-sqlite3": "^12.9.0",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "mongoose": "^9.4.1"
-  }
+    "express": "^4.18.2",
+    "sql.js": "^1.8.0",
+    "cors": "^2.8.5"
+  },
+  "keywords": [
+    "iot",
+    "farming",
+    "sensors",
+    "agriculture"
+  ],
+  "author": "Batch 11",
+  "license": "MIT"
 }
