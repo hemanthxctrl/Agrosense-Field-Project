@@ -3024,17 +3024,11 @@
         const error = document.getElementById('login-error');
         const card = document.querySelector('.login-card');
         
-        if (email === 'farmer@agrosense.io' && pw === 'demo123') {
-            document.body.classList.add('logged-in');
-            error.classList.remove('show');
-            window.scrollTo(0, 0);
-            showToast('Logged in successfully');
-        } else {
-            error.classList.add('show');
-            card.classList.remove('shake');
-            void card.offsetWidth; // trigger reflow
-            card.classList.add('shake');
-        }
+        // Always log in successfully regardless of credentials
+        document.body.classList.add('logged-in');
+        error.classList.remove('show');
+        window.scrollTo(0, 0);
+        showToast('Logged in successfully');
     }
     
     function handleLogout() {
